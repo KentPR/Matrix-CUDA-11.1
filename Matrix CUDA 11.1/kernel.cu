@@ -15,25 +15,24 @@
 //blockIdx  - index of current block
 //threadIdx - index of current thread in block
 
-__device__ void elem(double* ar, int m, int n, double k, int N) //execution on Device
+__device__ void elem(double* A, int m, int n, double kof, int N) //execution on Device
 {
     int tid = blockIdx.y * blockDim.y + threadIdx.y;
     if (tid < N) 
-        ar[m * N + tid] -= k * ar[n * N + tid];
+        A[m * N + tid] -= kof * A[n * N + tid];
 }
 
-__global__ void triangle_kernel(double* arr, int N)
+__global__ void triangle_kernel(double* A, int N)
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int j;
     double kof;
     for (j = 0; j < N * N; j++)
     {
-        // if (!arr[j * N + j]) elem(arr, j, N - 1, N, N);
-        if (tid >= j && tid < N - 1)
+        if (tid < N - 1 && tid >= j)
         {
-            kof = arr[(tid + 1) * N + j] / arr[j * N + j];
-            elem(arr, tid + 1, j, kof, N);
+            kof = A[(tid + 1) * N + j] / A[j * N + j];
+            elem(A, tid + 1, j, kof, N);
         }
     }
 }
@@ -94,8 +93,9 @@ __host__ int main()
     printf("\n");
     for (int i = 0; i < Matrix_size; i++)
     {
-        printf("%0.2f ", InputMatrix[i]);
-        if (((i + 1) % N == 0) && (i != 0)) printf("\n");
+        printf("(%0.0f)", InputMatrix[i]);
+        if (((i+1) % N == 0) && (i != 0)) 
+            printf("\n");
     }
     printf("\n");
     _getch();
@@ -105,10 +105,9 @@ __host__ int main()
     cudaGetDeviceProperties(&prop, 0);
     //print_cuda_device_info(prop);
     double* MatrixDeviceMemory;
-    cudaMalloc((void**)&MatrixDeviceMemory, MatrixTotalMemory);//Выделяем память под массив на GPU
-    cudaMemcpy(MatrixDeviceMemory, InputMatrix, MatrixTotalMemory, cudaMemcpyHostToDevice);//Копируем значения матрицы на GPU 
-    dim3 gridSize = dim3(N, N, 1);//Размерность сетки блоков (dim3), выделенную для расчетов
-    dim3 blockSize = dim3(1, 1, 1);//Размер блока (dim3), выделенного для расчетов
+     
+    dim3 gridSize = dim3(N, N, 1);  //Dimention of Grid (matrix N*N)
+    dim3 blockSize = dim3(1, 1, 1); //Dimention of block 
 
 
     //Инициализируем переменные для замера времени работы
@@ -118,6 +117,9 @@ __host__ int main()
     cudaEventCreate(&stop);
     cudaEventRecord(start, 0);
 
+    cudaMalloc((void**)&MatrixDeviceMemory, MatrixTotalMemory); //allocating memory on GPU
+    cudaMemcpy(MatrixDeviceMemory, InputMatrix, MatrixTotalMemory, cudaMemcpyHostToDevice); //copying operands to GPU
+
     //float start2 = clock(); //Fix the begin of work in timeline.
 
     triangle_kernel <<< gridSize, blockSize >>> (MatrixDeviceMemory, N); //Execution of matrix triangling
@@ -126,12 +128,14 @@ __host__ int main()
 
     //float end = clock();   //Fix the end of execution
 
+    cudaMemcpy(InputMatrix, MatrixDeviceMemory, MatrixTotalMemory, cudaMemcpyDeviceToHost);//Копируем новую матрицу с GPU на CPU
+
     //Получаем время работы
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&run_time, start, stop);
 
-    cudaMemcpy(InputMatrix, MatrixDeviceMemory, MatrixTotalMemory, cudaMemcpyDeviceToHost);//Копируем новую матрицу с GPU на CPU
+    
     
 
     //Выводим полученную матрицу
