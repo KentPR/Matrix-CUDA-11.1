@@ -11,7 +11,7 @@
 //CPU - host
 //GPU - device
 
-//blockDim  - size of block
+//blockDim  - dimention of block
 //blockIdx  - index of current block
 //threadIdx - index of current thread in block
 
@@ -39,7 +39,6 @@ __global__ void triangle_kernel(double* arr, int N)
 }
 
 
-//Перемножаем элементы на главной диагонали уже треугольной матрицы, тем самым получаем определитель
 double det(double* arr, int N)
 {
     double d = 1.0;
@@ -50,21 +49,26 @@ double det(double* arr, int N)
 
 void print_cuda_device_info(cudaDeviceProp& prop)
 {
+    printf("Device... ... ...initialized!");
     printf("Device name:                                        %s\n", prop.name);
-    printf("Global memory available on device:                  %zu\n", prop.totalGlobalMem);
-    printf("Shared memory available per block:                  %zu\n", prop.sharedMemPerBlock);
+    //printf("Global memory available on device:                  %zu\n", prop.totalGlobalMem);
+    //printf("Shared memory available per block:                  %zu\n", prop.sharedMemPerBlock);
     printf("Warp size in threads:                               %d\n", prop.warpSize);
     printf("Maximum number of threads per block:                %d\n", prop.maxThreadsPerBlock);
+    /*
     printf("Maximum size of each dimension of a block[0]:       %d\n", prop.maxThreadsDim[0]);
     printf("Maximum size of each dimension of a block[1]:       %d\n", prop.maxThreadsDim[1]);
     printf("Maximum size of each dimension of a block[2]:       %i\n", prop.maxThreadsDim[2]);
+    */
     printf("Maximum size of each dimension of a grid[0]:        %i\n", prop.maxGridSize[0]);
+    /*
     printf("Maximum size of each dimension of a grid[1]:        %i\n", prop.maxGridSize[1]);
     printf("Maximum size of each dimension of a grid[2]:        %i\n", prop.maxGridSize[2]);
     printf("Clock frequency in kilohertz:                       %i\n", prop.clockRate);
     printf("totalConstMem:                                      %zu\n", prop.totalConstMem);
     printf("Major compute capability:                           %i\n", prop.major);
     printf("Minor compute capability:                           %i\n", prop.minor);
+    */
     printf("Number of multiprocessors on device:                %i\n", prop.multiProcessorCount);
 }
 
@@ -76,7 +80,7 @@ __host__ int main()
     unsigned int timer;
 
 
-    int Matrix_size = N * N;//Size of matrix
+    int Matrix_size = N * N; //Size of matrix
     int MatrixTotalMemory = Matrix_size * sizeof(double);//Память, необходимая для массива на GPU 
     double* InputMatrix = new double[Matrix_size];//Выделяем память под массив
 
@@ -108,7 +112,7 @@ __host__ int main()
 
 
     //Инициализируем переменные для замера времени работы
-    float recording;
+    float run_time;
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -125,7 +129,7 @@ __host__ int main()
     //Получаем время работы
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&recording, start, stop);
+    cudaEventElapsedTime(&run_time, start, stop);
 
     cudaMemcpy(InputMatrix, MatrixDeviceMemory, MatrixTotalMemory, cudaMemcpyDeviceToHost);//Копируем новую матрицу с GPU на CPU
     
@@ -158,7 +162,7 @@ __host__ int main()
 
     printf("\ndet A = %.2f \n", det(InputMatrix, N));
     //if (recording > 0)
-        printf("Time of execution =  %.2f\n", recording);
+        printf("Time of execution =  %.2f\n", run_time);
     //else printf("Time of execution =  %.2f\n", end - start2);
 
     cudaFree(MatrixDeviceMemory); //Make the memory free
